@@ -1,5 +1,16 @@
+# Virtual environment
 .venv/
+.ragenv/
+.env
+.env.*
+
+# Environment variables
+.env
+.env.*
+
+# Python cache
 __pycache__/
 *.pyc
+
+# OS files
 .DS_Store
-.env
