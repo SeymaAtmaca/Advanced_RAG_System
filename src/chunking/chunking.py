@@ -4,7 +4,23 @@ nltk.download("punkt_tab")
 from nltk.tokenize import sent_tokenize 
 
 
-def chunk_documents(documents, chunk_size=500, overlap=100):
+# def sentence_chunking(text, max_len=1000):
+#     sentences = sent_tokenize(text, language="turkish")
+#     chunks = []
+#     current = ""
+
+#     for sent in sentences:
+#         if len(current) + len(sent) <= max_len:
+#             current += " " + sent 
+#         else:
+#             chunks.append(current.strip())
+#             current = sent 
+
+#     if current:
+#         chunks.append(current.strip())
+
+
+def chunk_documents(documents, chunk_size=1500, overlap=200):
     chunks = []
 
     for doc in documents:

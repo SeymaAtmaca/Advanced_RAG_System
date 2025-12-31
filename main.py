@@ -21,7 +21,7 @@ store = FAISSStore(dim=len(vectors[0]))
 store.add(vectors, chunks)
 
 answer, pages = rag_pipeline(
-    "dokümanın özetini ver", 
+    "Give me top 5 person name from this document", 
     embedder,
     store,
     llm
