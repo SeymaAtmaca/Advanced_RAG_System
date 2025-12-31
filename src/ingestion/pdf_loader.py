@@ -11,7 +11,7 @@ def load_pdf(path: str) -> str:
     text = page.extract_text()
     if text:
       docts.append({
-        "text": page,
+        "text": text,
         "page_num": page_num + 1
       })
       
