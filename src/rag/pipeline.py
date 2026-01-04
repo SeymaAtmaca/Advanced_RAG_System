@@ -1,9 +1,15 @@
 from src.rag.prompt import build_prompt
+from src.reranker.cross_encoder import CrossEncoderReranker
 
 
 def rag_pipeline(query, embedder, store, llm):
-    q_vec = embedder.encode([query])
-    retrieved = store.search(q_vec, k=5)
+    q_vec = embedder.encode(texts = [query], normalize_embeddings=True)
+
+    retrieved = store.search(q_vec, k=30)
+
+    # If add ReRanker ro model, open this 2 lines
+    # reranker = CrossEncoderReranker()
+    # retrieved = reranker.rerank(query, retrieved, top_k=10)
 
     context = ""
     pages = set()
