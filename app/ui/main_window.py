@@ -1,9 +1,11 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
-    QListWidget, QTextEdit, QLineEdit, QPushButton
+    QListWidget, QTextEdit, QLineEdit, QPushButton, QProgressBar
 )
 from app.controller import RAGController
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt5.QtCore import QThread
+from app.workers.index_worker import IndexWorker
 
 
 class MainWindow(QWidget):
@@ -55,22 +57,45 @@ class MainWindow(QWidget):
 
         layout.addLayout(right, 3)
 
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 0)  # indefinite loading
+        self.progress.hide()
+        layout.addWidget(self.progress)
+
+
         self.setLayout(layout)
 
     def select_pdf(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "PDF seç",
-            "",
-            "PDF Files (*.pdf)"
-        )
-
-        if not file_path:
+        path, _ = QFileDialog.getOpenFileName(self, "PDF seç", "", "PDF Files (*.pdf)")
+        if not path:
             return
 
-        success, message = self.controller.load_pdf(file_path)
+        self.progress.show()
 
-        QMessageBox.information(self, "PDF Durumu", message)
+        self.thread = QThread()
+        self.worker = IndexWorker(self.controller, path)
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.on_index_finished)
+        self.worker.error.connect(self.on_index_error)
+
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+
+        self.thread.start()
+
+    def on_index_finished(self, chunks):
+        self.progress.hide()
+        self.chat_area.append("📄 PDF yüklendi ve hazır.")
+    
+    def on_index_error(self, msg):
+        self.progress.hide()
+        QMessageBox.critical(self, "Hata", msg)
+
+
+
 
     def ask(self):
         question = self.input.text()

@@ -64,3 +64,9 @@ class RAGController:
         )
 
         return answer, pages
+    
+    def _build_faiss(self, vectors, chunks):
+        store = FAISSStore(dim=len(vectors[0]))
+        store.add(vectors, chunks)
+        return store
+
