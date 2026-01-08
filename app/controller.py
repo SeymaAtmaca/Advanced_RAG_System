@@ -1,55 +1,66 @@
+import os
 from src.ingestion.pdf_loader import load_pdf
 from src.chunking.chunking import chunk_documents
 from src.embedding.embedder import Embedder
 from src.vectorstore.faiss_store import FAISSStore
 from src.rag.pipeline import rag_pipeline
-from src.llm import ollama
-import os
+from src.llm.ollama import OllamaLLM
 
 
 class RAGController:
-    def __init__(self, pdf_dir="data"):
-        self.pdf_dir = pdf_dir
+    def __init__(self):
         self.embedder = Embedder("paraphrase-multilingual-mpnet-base-v2")
-        self.llm = ollama.OllamaLLM(model="mistral")
+        self.llm = OllamaLLM(model="mistral")
         self.store = None
-        self._build_index()
+        self.chunks = None
 
-    def _build_index(self):
-        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        PDF_DIR = os.path.join(BASE_DIR, "data")
+    def load_pdf(self, pdf_path: str):
+        """
+        PDF seçildiğinde çağrılır.
+        FAISS index burada oluşturulur.
+        """
+        # BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # PDF_DIR = os.path.join(BASE_DIR, "pdfs")
 
-        pdf_path = os.path.join(PDF_DIR, "InceMemed2.pdf")
+        # pdf_path = os.path.join(PDF_DIR, "InceMemed2.pdf")
+
+        if not os.path.exists(pdf_path):
+            return False, "PDF bulunamadı"
 
         docs = load_pdf(pdf_path)
-        
         if not docs:
-            raise RuntimeError("PDF yüklenemedi veya boş")
+            return False, "PDF okunamadı veya boş"
 
         chunks = chunk_documents(docs)
-
         if not chunks:
-            raise RuntimeError("Chunk oluşturulamadı")
+            return False, "Chunk oluşturulamadı"
 
-        texts = [c["text"] for c in chunks if c["text"].strip()]
-
-        if not texts:
-            raise RuntimeError("Embedding için text yok")
+        # ⬅️ KRİTİK: text + chunk beraber filtreleniyor
+        valid_chunks = [c for c in chunks if c["text"].strip()]
+        texts = [c["text"] for c in valid_chunks]
 
         vectors = self.embedder.encode(texts)
-
         if len(vectors) == 0:
-            raise RuntimeError("Embedding sonucu boş")
+            return False, "Embedding üretilemedi"
 
         self.store = FAISSStore(dim=len(vectors[0]))
-        self.store.add(vectors, chunks)
+        self.store.add(vectors, valid_chunks)
+        self.chunks = valid_chunks
 
+        return True, f"{len(valid_chunks)} parça indexlendi"
 
-    def ask(self, question):
+    def ask(self, question: str):
+        """
+        UI chat alanından çağrılır
+        """
+        if self.store is None:
+            return "Önce bir PDF yükleyin.", []
+
         answer, pages = rag_pipeline(
-            question,
-            self.embedder,
-            self.store,
-            self.llm
+            query=question,
+            embedder=self.embedder,
+            store=self.store,
+            llm=self.llm
         )
+
         return answer, pages

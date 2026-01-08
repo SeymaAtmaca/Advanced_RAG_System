@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (
     QListWidget, QTextEdit, QLineEdit, QPushButton
 )
 from app.controller import RAGController
+from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 
 class MainWindow(QWidget):
@@ -44,13 +45,32 @@ class MainWindow(QWidget):
         send_btn = QPushButton("Send")
         send_btn.clicked.connect(self.ask)
 
+        add_pdf_btn = QPushButton("Add PDF")
+        add_pdf_btn.clicked.connect(self.select_pdf)
+
         right.addWidget(self.chat_area)
         right.addWidget(self.input)
         right.addWidget(send_btn)
+        right.addWidget(add_pdf_btn)
 
         layout.addLayout(right, 3)
 
         self.setLayout(layout)
+
+    def select_pdf(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "PDF seç",
+            "",
+            "PDF Files (*.pdf)"
+        )
+
+        if not file_path:
+            return
+
+        success, message = self.controller.load_pdf(file_path)
+
+        QMessageBox.information(self, "PDF Durumu", message)
 
     def ask(self):
         question = self.input.text()

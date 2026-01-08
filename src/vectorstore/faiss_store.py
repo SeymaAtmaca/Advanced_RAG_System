@@ -1,33 +1,33 @@
-import faiss 
-import numpy as np 
+import faiss
+import pickle
+import os
+import numpy as np
 
 class FAISSStore:
     def __init__(self, dim):
-        """
-        dim: enbedding vector dimension
-        """
-        self.index = faiss.IndexFlatL2(dim)
+        self.index = faiss.IndexFlatIP(dim)
         self.metadata = []
 
     def add(self, vectors, metadatas):
-        """
-        vectors : List[np.array] = embedding vectors 
-        metadata: List[dict] = chunk info (text, page)
-        """
-        vectors = np.array(vectors).astype("float32")
-        self.index.add(vectors)
-        self.metadata.extend(metadatas) 
+        self.index.add(np.array(vectors).astype("float32"))
+        self.metadata.extend(metadatas)
 
-    def search(self, query_vector, k= 5):
-        """
-        query_vector = np.array shape (1, dim)
-        returns: List[dict] = top-k chunk metadata
-        """
-        query_vector = np.array(query_vector).astype("float32")
-        distances, indices = self.index.search(query_vector, k)
+    def search(self, q_vec, k=5):
+        scores, idxs = self.index.search(q_vec.astype("float32"), k)
+        return [self.metadata[i] for i in idxs[0]]
 
-        results = []
-        for idx in indices[0]:
-            results.append(self.metadata[idx])
+    def save(self, path):
+        faiss.write_index(self.index, path + ".faiss")
+        with open(path + ".meta.pkl", "wb") as f:
+            pickle.dump(self.metadata, f)
 
-        return results
+    @classmethod
+    def load(cls, path):
+        index = faiss.read_index(path + ".faiss")
+        with open(path + ".meta.pkl", "rb") as f:
+            metadata = pickle.load(f)
+
+        store = cls(index.d)
+        store.index = index
+        store.metadata = metadata
+        return store
