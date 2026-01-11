@@ -1,41 +1,56 @@
-# 🧠 Advanced RAG Desktop App (PyQt5 + FAISS + Ollama)
+# 🧠 Advanced RAG Desktop App  
+**PyQt5 · FAISS · SentenceTransformers · Ollama · Cross-Encoder Reranking**
 
-A local **Retrieval-Augmented Generation (RAG)** desktop application built with **PyQt5**, **FAISS**, and **Ollama**.  
-Users can load PDFs, build vector indexes, and chat with an LLM grounded strictly in the selected document content.
+A fully local **Retrieval-Augmented Generation (RAG)** desktop application that allows users to upload PDFs, build vector indexes, and chat with an LLM that answers **strictly based on the document content**.
+
+The application combines a modern desktop UI with a production-grade RAG pipeline including semantic search, reranking, conversation memory, and page-level citation.
 
 ---
 
-## ✨ Features
+## 🚀 What This App Does
 
-- 📄 PDF ingestion & chunking
-- 🔍 FAISS vector search
-- 🧠 RAG pipeline with reranking
-- 💬 Chat-based desktop UI (PyQt5)
-- ⏳ Modal loading dialog with progress indicator
-- 🗂 Loaded PDFs listed in sidebar
-- 🧠 Conversation memory support
+This system turns any PDF into a searchable AI assistant.
+
+You upload a PDF → it is chunked → embedded → indexed in FAISS → and then queried through a multi-stage RAG pipeline backed by Ollama.
+
+The LLM never hallucinates outside of the document.
+
+---
+
+## ✨ Key Features
+
+- 📄 **PDF ingestion & parsing**
+- ✂️ **Smart chunking with page tracking**
+- 🧠 **SentenceTransformer embeddings**
+- ⚡ **FAISS vector index**
+- 🎯 **Cross-Encoder reranking**
+- 💬 **Conversational RAG with memory**
+- 📚 **Page-level citation**
+- 🖥 **Modern PyQt5 desktop UI**
+- ⏳ **Modal loading dialog with real batch-based progress**
+- 🗂 **Multi-PDF sidebar**
 
 ---
 
 ## 🖼 UI Preview
 
-### Main Chat Interface
-![Main UI](assets/ui_main.png)
+### Main Chat Interface  
+WhatsApp-style chat bubbles with source citations
 
-### PDF Indexing (Blocking Loading Dialog)
-![Loading Dialog](assets/ui_loading.png)
+![Main UI](imgs/1.png)
 
 ---
 
-## 🏗 Architecture Overview
+## 🏗 Architecture
 
 ```text
-UI (PyQt5)
+PyQt5 UI
  └── MainWindow
       └── RAGController
-           ├── PDF Loader
-           ├── Chunker
-           ├── Embedder (SentenceTransformer)
-           ├── FAISS Store
-           ├── Reranker (CrossEncoder)
-           └── Ollama LLM
+           ├── PDF Loader (NLTK + PyPDF)
+           ├── Chunker (page-aware)
+           ├── SentenceTransformer Embedder
+           ├── FAISS Vector Store
+           ├── Cross-Encoder Reranker
+           ├── Ollama LLM
+           └── ChatMemory

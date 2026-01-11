@@ -1,12 +1,12 @@
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout,
-    QListWidget, QTextEdit, QLineEdit, QPushButton, QProgressBar
+    QWidget, QVBoxLayout, QHBoxLayout, QScrollArea,
+    QListWidget, QLineEdit, QPushButton, QMessageBox, QFileDialog
 )
-from app.controller import RAGController
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import QThread
+from app.controller import RAGController
 from app.workers.index_worker import IndexWorker
 from app.ui.loading_dialog import LoadingDialog
+from app.ui.chat_bubble import ChatBubble
 import os
 
 
@@ -15,35 +15,43 @@ class MainWindow(QWidget):
         super().__init__()
         self.setWindowTitle("Advanced RAG Desktop App")
         self.resize(1000, 600)
-        self.loading = None
+
         self.controller = RAGController()
+        self.loading = None
 
-        layout = QHBoxLayout()
+        layout = QHBoxLayout(self)
 
-        # Sol panel – PDF listesi
+        # ---------------- LEFT: PDF LIST ----------------
         self.pdf_list = QListWidget()
-        self.pdf_list.addItems(["Loaded PDFs"])
         self.pdf_list.setStyleSheet("""
             QListWidget {
                 background-color: #202020;
                 border: none;
+                color: white;
             }
             QListWidget::item:selected {
                 background-color: #64B4FF;
                 color: black;
             }
         """)
-
         layout.addWidget(self.pdf_list, 1)
 
-        # Sağ panel – Chat
+        # ---------------- RIGHT: CHAT ----------------
         right = QVBoxLayout()
 
-        self.chat_area = QTextEdit()
-        self.chat_area.setReadOnly(True)
+        # Chat container (bubble based)
+        self.chat_container = QWidget()
+        self.chat_layout = QVBoxLayout(self.chat_container)
+        self.chat_layout.addStretch()
 
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setWidget(self.chat_container)
+        self.scroll.setStyleSheet("border:none;")
+
+        # Input
         self.input = QLineEdit()
-        self.input.setPlaceholderText("Ask a question...")
+        self.input.setPlaceholderText("Ask a question…")
         self.input.returnPressed.connect(self.ask)
 
         send_btn = QPushButton("Send")
@@ -52,21 +60,16 @@ class MainWindow(QWidget):
         add_pdf_btn = QPushButton("Add PDF")
         add_pdf_btn.clicked.connect(self.select_pdf)
 
-        right.addWidget(self.chat_area)
+        right.addWidget(self.scroll, 1)
         right.addWidget(self.input)
         right.addWidget(send_btn)
         right.addWidget(add_pdf_btn)
 
         layout.addLayout(right, 3)
 
-        self.progress = QProgressBar()
-        self.progress.setRange(0, 0)  # indefinite loading
-        self.progress.hide()
-        layout.addWidget(self.progress)
-
-
-        self.setLayout(layout)
-
+    # --------------------------------------------------
+    # PDF LOADING
+    # --------------------------------------------------
     def select_pdf(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select PDF", "", "PDF Files (*.pdf)")
         if not path:
@@ -91,33 +94,39 @@ class MainWindow(QWidget):
 
         self.thread.start()
 
-
     def on_index_finished(self, path):
         self.loading.close()
 
         name = os.path.basename(path)
         self.pdf_list.addItem(name)
 
-        self.chat_area.append(f"<i>{name} indexed and ready.</i>")
+        self.add_message(f"{name} indexed and ready.", is_user=False)
 
-        
     def on_index_error(self, msg):
-        self.progress.hide()
-        QMessageBox.critical(self, "Hata", msg)
+        if self.loading:
+            self.loading.close()
+        QMessageBox.critical(self, "Error", msg)
 
-
-
-
+    # --------------------------------------------------
+    # CHAT
+    # --------------------------------------------------
     def ask(self):
-        question = self.input.text()
+        question = self.input.text().strip()
         if not question:
             return
 
-        self.chat_area.append(f"<b>You:</b> {question}")
+        self.add_message(question, is_user=True)
+        self.input.clear()
+
         answer, pages = self.controller.ask(question)
 
-        self.chat_area.append(
-            f"<b>LLM:</b> {answer}<br>"
-            f"<i>Pages:</i> {pages}<br><br>"
+        msg = f"{answer}\n\nPages: {pages}"
+        self.add_message(msg, is_user=False)
+
+    def add_message(self, text, is_user):
+        bubble = ChatBubble(text, is_user)
+        self.chat_layout.insertWidget(self.chat_layout.count() - 1, bubble)
+
+        self.scroll.verticalScrollBar().setValue(
+            self.scroll.verticalScrollBar().maximum()
         )
-        self.input.clear()
