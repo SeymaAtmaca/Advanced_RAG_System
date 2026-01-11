@@ -2,9 +2,9 @@ from src.rag.prompt import build_prompt
 from src.reranker.cross_encoder import CrossEncoderReranker
 from src.rag.memory import ChatMemory
 
-def rag_pipeline(query, embedder, store, llm):
-    memory = ChatMemory(max_turns=5)
-    q_vec = embedder.encode([query], normalize_embeddings=True)
+def rag_pipeline(query, embedder, store, llm, memory):
+    # memory = ChatMemory(max_turns=5)
+    q_vec = embedder.encode([query])
     retrieved = store.search(q_vec, k=10)
 
     context = "\n".join([r["text"] for r in retrieved])

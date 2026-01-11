@@ -5,6 +5,7 @@ from src.embedding.embedder import Embedder
 from src.vectorstore.faiss_store import FAISSStore
 from src.rag.pipeline import rag_pipeline
 from src.llm.ollama import OllamaLLM
+from src.rag.memory import ChatMemory
 
 
 class RAGController:
@@ -13,41 +14,28 @@ class RAGController:
         self.llm = OllamaLLM(model="mistral")
         self.store = None
         self.chunks = None
+        self.memory = ChatMemory(max_turns=5)
 
-    def load_pdf(self, pdf_path: str):
-        """
-        PDF seçildiğinde çağrılır.
-        FAISS index burada oluşturulur.
-        """
-        # BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        # PDF_DIR = os.path.join(BASE_DIR, "pdfs")
-
-        # pdf_path = os.path.join(PDF_DIR, "InceMemed2.pdf")
-
-        if not os.path.exists(pdf_path):
-            return False, "PDF bulunamadı"
-
+    def load_pdf(self, pdf_path, progress_callback=None):
         docs = load_pdf(pdf_path)
-        if not docs:
-            return False, "PDF okunamadı veya boş"
-
         chunks = chunk_documents(docs)
-        if not chunks:
-            return False, "Chunk oluşturulamadı"
 
-        # ⬅️ KRİTİK: text + chunk beraber filtreleniyor
         valid_chunks = [c for c in chunks if c["text"].strip()]
         texts = [c["text"] for c in valid_chunks]
 
-        vectors = self.embedder.encode(texts)
-        if len(vectors) == 0:
-            return False, "Embedding üretilemedi"
+        vectors = self.embedder.encode(
+            texts,
+            batch_size=32,
+            progress_callback=progress_callback
+        )
 
         self.store = FAISSStore(dim=len(vectors[0]))
         self.store.add(vectors, valid_chunks)
         self.chunks = valid_chunks
+        self.memory.clear()
 
-        return True, f"{len(valid_chunks)} parça indexlendi"
+        return True, f"{len(valid_chunks)} chunks indexed"
+
 
     def ask(self, question: str):
         """
@@ -60,7 +48,8 @@ class RAGController:
             query=question,
             embedder=self.embedder,
             store=self.store,
-            llm=self.llm
+            llm=self.llm,
+            memory = self.memory
         )
 
         return answer, pages

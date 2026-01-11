@@ -6,6 +6,8 @@ from app.controller import RAGController
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import QThread
 from app.workers.index_worker import IndexWorker
+from app.ui.loading_dialog import LoadingDialog
+import os
 
 
 class MainWindow(QWidget):
@@ -13,7 +15,7 @@ class MainWindow(QWidget):
         super().__init__()
         self.setWindowTitle("Advanced RAG Desktop App")
         self.resize(1000, 600)
-
+        self.loading = None
         self.controller = RAGController()
 
         layout = QHBoxLayout()
@@ -66,17 +68,20 @@ class MainWindow(QWidget):
         self.setLayout(layout)
 
     def select_pdf(self):
-        path, _ = QFileDialog.getOpenFileName(self, "PDF seç", "", "PDF Files (*.pdf)")
+        path, _ = QFileDialog.getOpenFileName(self, "Select PDF", "", "PDF Files (*.pdf)")
         if not path:
             return
 
-        self.progress.show()
+        self.loading = LoadingDialog()
+        self.loading.show()
 
         self.thread = QThread()
         self.worker = IndexWorker(self.controller, path)
         self.worker.moveToThread(self.thread)
 
+        self.worker.progress.connect(self.loading.update)
         self.thread.started.connect(self.worker.run)
+
         self.worker.finished.connect(self.on_index_finished)
         self.worker.error.connect(self.on_index_error)
 
@@ -86,10 +91,16 @@ class MainWindow(QWidget):
 
         self.thread.start()
 
-    def on_index_finished(self, chunks):
-        self.progress.hide()
-        self.chat_area.append("📄 PDF yüklendi ve hazır.")
-    
+
+    def on_index_finished(self, path):
+        self.loading.close()
+
+        name = os.path.basename(path)
+        self.pdf_list.addItem(name)
+
+        self.chat_area.append(f"<i>{name} indexed and ready.</i>")
+
+        
     def on_index_error(self, msg):
         self.progress.hide()
         QMessageBox.critical(self, "Hata", msg)
