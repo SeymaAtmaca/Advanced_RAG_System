@@ -3,6 +3,8 @@ def build_prompt(context, question):
 You are an assistant answering questions strictly using the provided context.
 If the answer is not found in the context, say:
 "Bu bilgi verilen PDF'te yer almıyor."
+If the answer is not explicitly in the context, say "Not found in document."
+
 
 Context:
 {context}
