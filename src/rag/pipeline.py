@@ -1,33 +1,32 @@
-from src.rag.prompt import build_prompt
-from src.reranker.cross_encoder import CrossEncoderReranker
-from src.rag.memory import ChatMemory
 from src.rag.context_packer import pack_context
 
 def rag_pipeline(query, embedder, store, llm, memory):
-    # memory = ChatMemory(max_turns=5)
-    q_vec = embedder.encode([query])
-    raw = store.search(q_vec, k=20)
-    retrieved = pack_context(q_vec[0], raw)
+    q_vec = embedder.encode([query])[0]
 
-    context = "\n\n".join([c["text"] for c in retrieved])
-    pages = sorted({c["page"] for c in retrieved})
+    raw = store.search(q_vec.reshape(1, -1), k=20)
+    packed = pack_context(q_vec, raw)
 
+    context = "\n\n".join([c["text"] for c in packed])
 
     prompt = f"""
-Conversation:
+You are a precise document-based assistant.
+
+Conversation history:
 {memory.build()}
 
-Context:
+Context (use ONLY this):
 {context}
 
 Question:
 {query}
 
-Answer using ONLY the context. Cite pages.
+Rules:
+- Answer strictly from context
+- If information is missing, say "Not found in document"
+- Be concise and factual
 """
 
     answer = llm.generate(prompt)
     memory.add(query, answer)
 
-    return answer, pages
-
+    return answer, []

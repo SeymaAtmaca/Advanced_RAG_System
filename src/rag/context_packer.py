@@ -1,28 +1,21 @@
 import numpy as np
 
-def pack_context(query_vec, retrieved_chunks, max_tokens=1800):
-    """
-    Reorders and filters FAISS results so the LLM sees only the most
-    semantically useful chunks in the correct order.
-    """
+MAX_CHARS = 3500  # mistral için güvenli
 
-    # Cosine similarity ordering
+def pack_context(query_vec, retrieved_chunks):
     for c in retrieved_chunks:
         c["score"] = float(np.dot(query_vec, c["vector"]))
 
-    # highest relevance first
     ranked = sorted(retrieved_chunks, key=lambda x: x["score"], reverse=True)
 
     packed = []
-    token_count = 0
+    total_len = 0
 
     for c in ranked:
-        tokens = len(c["text"].split())
-
-        if token_count + tokens > max_tokens:
+        text = c["text"]
+        if total_len + len(text) > MAX_CHARS:
             break
-
         packed.append(c)
-        token_count += tokens
+        total_len += len(text)
 
     return packed
