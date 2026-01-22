@@ -8,6 +8,10 @@ indexes, and chat with a local LLM grounded strictly in document content.
 
 ---
 
+![UI2](https://github.com/SeymaAtmaca/Advanced_RAG_System/blob/main/imgs/2.png)
+
+![UI3](https://github.com/SeymaAtmaca/Advanced_RAG_System/blob/main/imgs/3.png)
+
 ## 🚀 Key Highlights
 
 - Fully local & offline-capable (except Ollama runtime)
